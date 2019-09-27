@@ -51,7 +51,7 @@ class Sim {
      * @param op4 The value of user input 4, stochastic/deterministic
      */
     constructor(op2, op3, op4) {
-        op2 = 10;
+        op2 = 80;
         op3 = 20;
         op4 = 10;
 
@@ -61,14 +61,13 @@ class Sim {
         this.columns = 500;
         this.rows = 500;
 
-        this.preyCount = null;
-        this.predCount = null;
+        this.preyCountTotal = null;
 
         // this.rows = height / div;
         // this.board = new int[columns][rows];
         this.generation = 0;
 
-        this.catchRate = 0.33;
+        this.catchRate = 0.10;
 
 
         this.gridFill = op2;
@@ -94,10 +93,11 @@ class Sim {
         for (i = 0; i < this.columns; i++) {
             board[i] = [];
             for (j = 0; j < this.rows; j++) {
-                if (j <= this.gridFill) {
-                            if (j % 2 == 0) board[i][j] = 2;
-                            else board[i][j] = 1;
-                    }
+
+                            // if (j%2== 0) board[i][j] = 2;
+                            // else board[i][j] = 1;
+                board[i][j] = this.predPreyPicker();
+
                 }
             }
         this.board = board;
@@ -107,14 +107,86 @@ class Sim {
     {
         var rtn;
         var r = random(0, 1);
-        if (r < 0.50) rtn = 1; //Blue prey5%
-        else if (r < 1) rtn = 2; //Rered3%
+        if (r < 0.10) rtn = 1; //Blue prey5%
+        else if (r < 0.11) rtn = 2; //Rered3%
         else rtn = 0; //White empty 94%
         return rtn;
     }
 
     generate() {
+        //Reset prey and pred count from last cycle
+        var preyCount = 0;
+        var predCount = 0;
+        var i,j,x,y;
+
+        var next = [];
+
+        //Loop through board and count the number of cells within the moore neighborhood
+        for (x = 0; x < this.columns; x++)
+        {
+            next[x] = [];
+            for (y = 0; y < this.rows; y++)
+            {
+                // Add up all the states in a 3x3 surrounding grid
+                var predNeighbors = 0;
+                var preyNeighbors = 0;
+                for (i = -1; i <= 1; i++)
+                {
+                    for (j = -1; j <= 1; j++)
+                    {
+                        if (this.board[(x+i+this.columns)%this.columns][(y+j+this.rows)%this.rows] === 1) preyNeighbors++;
+                        else if (this.board[(x+i+this.columns)%this.columns][(y+j+this.rows)%this.rows] === 2) predNeighbors++;
+                    }
+                }
+
+                //Subtract the cells own state from the neighbor count
+                if (this.board[x][y] === 1) preyNeighbors--;
+                else if (this.board[x][y] === 2) predNeighbors--;
+
+                // Rules for Prey
+                if (this.board[x][y] === 1)
+                {
+                    if (predNeighbors > 0) next[x][y] = this.eatEscapePicker(); //Eaten
+                    else next[x][y] = this.board[x][y]; //Stasis
+                }
+
+                // Rules for Predators
+                if (this.board[x][y] === 2)
+                {
+                    if (preyNeighbors >0) next[x][y] = 0; //moving
+                    else if (preyNeighbors < 1) next[x][y] = 0; //Starvation
+                    else next[x][y] = this.board[x][y]; //Stasis
+                }
+
+                // Rules for Space
+                if (this.board[x][y] === 0)
+                {
+                    if (predNeighbors >= 2 && preyNeighbors >= 1) next[x][y] = 2; //Breed pred
+                    else if (preyNeighbors >= 2) next[x][y] = 1; //Breed prey
+                    else next[x][y] = 0;
+                }
+            }
+        }
+        // this.counter();
+        this.predCountTotal = this.predCountTotal + predCount;
+        this.preyCountTotal = this.preyCountTotal + preyCount;
+        //Change board into next in time for the next cycle
+        this.board = next;
         this.generation++;
+    }
+
+    /** METHOD
+     * Decides if a predator successfully catches prey
+     *
+     * @return prey if hunt failed, predator if hunt succeeded
+     */
+    eatEscapePicker()
+    {
+        var rtn;
+        var r = Math.random();
+        if (r > this.catchRate) rtn = 1;
+        else rtn = 2;
+        return rtn;
     }
 
     /** METHOD
