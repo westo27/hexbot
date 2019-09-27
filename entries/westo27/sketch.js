@@ -62,6 +62,7 @@ class Sim {
         this.rows = 500;
 
         this.preyCountTotal = null;
+        this.predCountTotal = null;
 
         // this.rows = height / div;
         // this.board = new int[columns][rows];
